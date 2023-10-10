@@ -1,6 +1,6 @@
 <form action="action_page.php">
   <div class="container">
-    <h1>This is v2 of the application with automatic build and deployment</h1>
+    <h1>This app is deployed on docker container</h1>
     <p>Please fill in this form to create an account.</p>
     <hr>
      
