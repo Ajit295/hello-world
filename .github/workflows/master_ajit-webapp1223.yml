@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy JAR app to Azure Web App - ajit-webapp1223
+name: Build and deploy container app to Azure Web App - ajit-webapp1223
 
 on:
   push:
@@ -11,52 +11,41 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-latest'
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
 
-      - name: Set up Java version
-        uses: actions/setup-java@v1
-        with:
-          java-version: '11'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-      - name: Build with Maven
-        run: mvn clean install
+    - name: Log in to registry
+      uses: docker/login-action@v2
+      with:
+        registry: https://mcr.microsoft.com/
+        username: ${{ secrets.AzureAppService_ContainerUsername_ef3576ad851143dc9744b3de8ab0d009 }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_e58655ce72fa4947acdcdc81445884a2 }}
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3
-        with:
-          name: java-app
-          path: '${{ github.workspace }}/target/*.jar'
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v3
+      with:
+        push: true
+        tags: mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_ef3576ad851143dc9744b3de8ab0d009 }}/appsvc/staticsite:${{ github.sha }}
+        file: ./Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: 'Production'
+      name: 'production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
-  
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
-        with:
-          name: java-app
-      
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_445C0B0384E144838F49E0477BADFA70 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7F06DE6FA85947B7939FB53566F5E7BE }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8A45DF0715904067934166DF7E8A669D }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'ajit-webapp1223'
-          slot-name: 'Production'
-          package: '*.jar'
-          
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'ajit-webapp1223'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_267acc59ed334ce894c66502d70cbe60 }}
+        images: 'mcr.microsoft.com/${{ secrets.AzureAppService_ContainerUsername_ef3576ad851143dc9744b3de8ab0d009 }}/appsvc/staticsite:${{ github.sha }}'
